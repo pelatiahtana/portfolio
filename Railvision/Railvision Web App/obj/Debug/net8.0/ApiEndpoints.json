@@ -1,0 +1,56 @@
+[
+  {
+    "ContainingType": "TrainGenie.Controllers.WagonDetachmentLogController",
+    "Method": "GetLogs",
+    "RelativePath": "api/WagonDetachmentLog",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TrainGenie.Controllers.WagonDetachmentLogController",
+    "Method": "AddLog",
+    "RelativePath": "api/WagonDetachmentLog",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "log",
+        "Type": "WagonDetachmentLog",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "TrainGenie.Controllers.WagonDetachmentLogController",
+    "Method": "ClearLogs",
+    "RelativePath": "api/WagonDetachmentLog",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "Program\u002B\u003C\u003Ec",
+    "Method": "\u003C\u003CMain\u003E$\u003Eb__0_8",
+    "RelativePath": "test-session",
+    "HttpMethod": "GET",
+    "IsController": false,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "System.String",
+        "MediaTypes": [
+          "text/plain"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  }
+]
