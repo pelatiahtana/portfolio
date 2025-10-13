@@ -1,0 +1,61 @@
+﻿@model TrainGenie.Models.RegisterViewModel
+@{
+    ViewData["Title"] = "Register";
+    Layout = "_Layout";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="login-card shadow-lg">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h3 class="mb-0 text-center font-weight-bold">Create Account</h3>
+                </div>
+                <div class="card-body p-4">
+                    <form asp-action="Register" method="post" id="registerForm">
+                        @Html.AntiForgeryToken()
+                        <div class="form-group mb-3">
+                            <label>Email (University of Zimbabwe)</label>
+                            <input type="email" name="Email" class="form-control form-control-lg" required pattern="^[a-zA-Z]+\.[a-zA-Z]+@@students\.uz\.ac\.zw$">
+                        </div>
+                        <div class="form-group mb-3">
+                            <label>Username</label>
+                            <input type="text" name="Username" class="form-control form-control-lg" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label>Password</label>
+                            <input type="password" name="Password" class="form-control form-control-lg" required>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label>Role</label>
+                            <select name="Role" class="form-control form-control-lg" required>
+                                <option value="Operator">Operator</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg w-100">Register</button>
+                    </form>
+                    <div id="registerError" class="alert alert-danger mt-3 d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="text-center mt-3">
+        <a href="/Account/Login">Already have an account? Login here</a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            var email = this.Email.value.trim();
+            var regex = /^[a-zA-Z]+\.[a-zA-Z]+@@students\.uz\.ac\.zw$/;
+            if (!regex.test(email)) {
+                e.preventDefault();
+                var errorDiv = document.getElementById('registerError');
+                errorDiv.textContent = "Email must be a valid University of Zimbabwe student email (name.surname@students.uz.ac.zw)";
+                errorDiv.classList.remove('d-none');
+            }
+        });
+    </script>
+}

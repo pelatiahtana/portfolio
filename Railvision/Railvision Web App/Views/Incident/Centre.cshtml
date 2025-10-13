@@ -1,0 +1,467 @@
+﻿@model List<Incident>
+@{
+    ViewData["Title"] = "Incident Centre";
+    Layout = "_Layout";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-light">Incident Centre</h2>
+        <div class="d-flex">
+            <div class="btn-group me-2">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    Filter
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item filter-link" data-status="all">All Incidents</a></li>
+                    <li><a class="dropdown-item filter-link" data-status="Pending">Pending</a></li>
+                    <li><a class="dropdown-item filter-link" data-status="In Progress">In Progress</a></li>
+                    <li><a class="dropdown-item filter-link" data-status="Resolved">Resolved</a></li>
+                </ul>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    Sort
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item sort-link" data-sort="newest">Newest First</a></li>
+                    <li><a class="dropdown-item sort-link" data-sort="oldest">Oldest First</a></li>
+                    <li><a class="dropdown-item sort-link" data-sort="severity">Severity</a></li>
+                </ul>
+            </div>
+            <div class="btn-group ms-2">
+                <button class="btn btn-danger" id="clearAllIncidentsBtn">
+                    <i class="fas fa-trash-alt"></i> Clear All Incidents
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive glass-card">
+        <table class="table table-dark table-hover align-middle" id="incidentsTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Description</th>
+                    <th>Location</th>
+                    <th>Severity</th>
+                    <th>Reported By</th>
+                    <th>Train ID</th>
+                    <th>Report Time</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var incident in Model)
+                {
+                    <tr data-id="@incident.Id" data-status="@incident.Status.ToLower().Replace(" ", "-")">
+                        <td>@incident.Id</td>
+                        <td>@incident.Title</td>
+                        <td>@incident.Description</td>
+                        <td>@(incident.Location ?? "N/A")</td>
+                        <td>
+                            <span class="badge @GetSeverityBadge(incident.Severity)">
+                                @incident.Severity
+                            </span>
+                        </td>
+                        <td>@incident.ReportedBy</td>
+                        <td>@(incident.TrainId ?? "-")</td>
+                        <td>@incident.ReportTime.ToString("g")</td>
+                        <td>
+                            <span class="badge @GetStatusBadge(incident.Status) status-badge">
+                                @incident.Status
+                            </span>
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info view-incident"
+                                    data-id="@incident.Id"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#incidentDetailModal">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Incident Detail Modal -->
+<div class="modal fade" id="incidentDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title">Incident Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="incidentUpdateForm">
+                    <input type="hidden" id="incidentId">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-control" id="detailTitle" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Severity</label>
+                            <input type="text" class="form-control" id="detailSeverity" readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="detailStatus">
+                                <option value="Pending">Pending</option>
+                                <option value="In Progress">In Progress</option>
+                                <option value="Resolved">Resolved</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Reported By</label>
+                            <input type="text" class="form-control" id="detailReportedBy" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Report Time</label>
+                            <input type="text" class="form-control" id="detailReportTime" readonly>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Location</label>
+                        <input type="text" class="form-control" id="detailLocation" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="detailDescription" rows="3" readonly></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Admin Notes</label>
+                        <textarea class="form-control" id="detailAdminNotes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="saveIncidentChanges">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .glass-card {
+            background: rgba(30, 30, 40, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .badge-critical {
+            background: linear-gradient(135deg, #ff416c, #ff4b2b);
+        }
+
+        .badge-high {
+            background: linear-gradient(135deg, #ff9966, #ff5e62);
+        }
+
+        .badge-medium {
+            background: linear-gradient(135deg, #36d1dc, #5b86e5);
+        }
+
+        .badge-low {
+            background: linear-gradient(135deg, #a1c4fd, #c2e9fb);
+        }
+
+        .badge-pending {
+            background: linear-gradient(135deg, #ffd26f, #ff7c7c);
+        }
+
+        .badge-in-progress {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        }
+
+        .badge-resolved {
+            background: linear-gradient(135deg, #0ba360, #3cba92);
+        }
+
+        .view-incident {
+            transition: all 0.3s ease;
+        }
+
+            .view-incident:hover {
+                transform: scale(1.1);
+                box-shadow: 0 0 8px rgba(100, 200, 255, 0.6);
+            }
+
+        tr[data-status="resolved"] {
+            opacity: 0.7;
+        }
+    </style>
+
+    @functions {
+        string GetSeverityBadge(string severity)
+        {
+            return severity.ToLower() switch
+            {
+                "critical" => "badge-critical",
+                "high" => "badge-high",
+                "medium" => "badge-medium",
+                _ => "badge-low"
+            };
+        }
+
+        string GetStatusBadge(string status)
+        {
+            return status.ToLower() switch
+            {
+                "pending" => "badge-pending",
+                "in progress" => "badge-in-progress",
+                "resolved" => "badge-resolved",
+                _ => ""
+            };
+        }
+    }
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script>
+        // Initialize SignalR connection
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/incidentHub")
+            .build();
+
+        connection.start().then(() => {
+            connection.invoke("JoinAdminGroup").catch(err => console.error(err));
+        }).catch(err => console.error(err));
+
+        // Handle new incidents
+        connection.on("ReceiveNewIncident", incident => {
+            showAlert(`New incident reported: ${incident.title}`, 'info');
+            addIncidentToTable(incident);
+        });
+
+        // Handle incident updates
+        connection.on("ReceiveIncidentUpdate", incident => {
+            showAlert(`Incident #${incident.id} updated: ${incident.status}`, 'success');
+            updateIncidentInTable(incident);
+        });
+
+        // Incident filtering
+        document.querySelectorAll('.filter-link').forEach(link => {
+            link.addEventListener('click', function() {
+                const status = this.dataset.status.toLowerCase().replace(/\s/g, '-');
+                const rows = document.querySelectorAll('#incidentsTable tbody tr');
+
+                rows.forEach(row => {
+                    if (status === 'all') {
+                        row.style.display = '';
+                    } else {
+                        // Compare normalized status
+                        row.style.display = row.dataset.status === status ? '' : 'none';
+                    }
+                });
+            });
+        });
+
+        // Incident sorting
+        document.querySelectorAll('.sort-link').forEach(link => {
+            link.addEventListener('click', function() {
+                const sort = this.dataset.sort;
+                const tbody = document.querySelector('#incidentsTable tbody');
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                let sortedRows = [];
+
+                if (sort === 'newest') {
+                    sortedRows = rows.sort((a, b) => {
+                        const aTime = new Date(a.children[6].textContent);
+                        const bTime = new Date(b.children[6].textContent);
+                        return bTime - aTime;
+                    });
+                } else if (sort === 'oldest') {
+                    sortedRows = rows.sort((a, b) => {
+                        const aTime = new Date(a.children[6].textContent);
+                        const bTime = new Date(b.children[6].textContent);
+                        return aTime - bTime;
+                    });
+                } else if (sort === 'severity') {
+                    // Define severity order
+                    const severityOrder = { 'critical': 1, 'high': 2, 'medium': 3, 'low': 4 };
+                    sortedRows = rows.sort((a, b) => {
+                        const aSeverity = a.children[4].textContent.trim().toLowerCase();
+                        const bSeverity = b.children[4].textContent.trim().toLowerCase();
+                        return (severityOrder[aSeverity] || 99) - (severityOrder[bSeverity] || 99);
+                    });
+                }
+
+                // Re-append sorted rows
+                sortedRows.forEach(row => tbody.appendChild(row));
+            });
+        });
+
+        // Incident detail view
+        document.querySelectorAll('.view-incident').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const id = this.dataset.id;
+                fetch(`/Incident/Details/${id}`)
+                    .then(response => response.json())
+                    .then(incident => {
+                        document.getElementById('incidentId').value = incident.id;
+                        document.getElementById('detailTitle').value = incident.title;
+                        document.getElementById('detailDescription').value = incident.description;
+                        document.getElementById('detailLocation').value = incident.location || 'N/A';
+                        document.getElementById('detailSeverity').value = incident.severity;
+                        document.getElementById('detailReportedBy').value = incident.reportedBy;
+                        document.getElementById('detailReportTime').value = new Date(incident.reportTime).toLocaleString();
+                        document.getElementById('detailStatus').value = incident.status;
+                        document.getElementById('detailAdminNotes').value = incident.adminNotes || '';
+                    });
+            });
+        });
+
+        // Save incident changes
+        document.getElementById('saveIncidentChanges').addEventListener('click', function() {
+            const incident = {
+                Id: parseInt(document.getElementById('incidentId').value, 10),
+                Status: document.getElementById('detailStatus').value,
+                AdminNotes: document.getElementById('detailAdminNotes').value
+            };
+
+            fetch('/Incident/Update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                },
+                body: JSON.stringify(incident)
+            })
+            .then(response => {
+                if (response.ok) {
+                    updateIncidentInTable({
+                        id: incident.Id,
+                        status: incident.Status
+                    });
+                    $('#incidentDetailModal').modal('hide');
+                }
+            });
+        });
+        
+        document.getElementById('clearAllIncidentsBtn').addEventListener('click', function() {
+            if (!confirm('Are you sure you want to clear all incidents? This action cannot be undone.')) return;
+
+            fetch('/Incident/ClearAll', {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]').value
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Remove all rows from the table
+                    document.querySelector('#incidentsTable tbody').innerHTML = '';
+                    showAlert('All incidents have been cleared.', 'success');
+                } else {
+                    showAlert('Failed to clear incidents.', 'danger');
+                }
+            });
+        });
+
+        // Listen for SignalR broadcast to clear table in real-time for all admins
+        connection.on("ReceiveClearAllIncidents", () => {
+            document.querySelector('#incidentsTable tbody').innerHTML = '';
+            showAlert('All incidents have been cleared.', 'info');
+        });
+
+        function addIncidentToTable(incident) {
+            const tbody = document.querySelector('#incidentsTable tbody');
+            const row = document.createElement('tr');
+            row.dataset.status = incident.status.toLowerCase().replace(' ', '-');
+            row.innerHTML = `
+                <td>${incident.id}</td>
+                <td>${incident.title}</td>
+                <td>${incident.description}</td>
+                <td>${incident.location || 'N/A'}</td>
+                <td><span class="badge ${getSeverityBadgeClass(incident.severity)}">${incident.severity}</span></td>
+                <td>${incident.reportedBy}</td>
+                <td>${new Date(incident.reportTime).toLocaleString()}</td>
+                <td><span class="badge ${getStatusBadgeClass(incident.status)}">${incident.status}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info view-incident"
+                            data-id="${incident.id}"
+                            data-bs-toggle="modal"
+                            data-bs-target="#incidentDetailModal">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            `;
+            tbody.insertBefore(row, tbody.firstChild);
+
+            // Add event listener to the new button
+            row.querySelector('.view-incident').addEventListener('click', function() {
+                // ... same as above
+            });
+        }
+
+        function updateIncidentInTable(incident) {
+            const incidentId = incident.id || incident.Id;
+            const incidentStatus = incident.status || incident.Status;
+
+            const row = document.querySelector(`tr[data-id="${incident.id}"]`);
+            if (row) {
+                // Update status data attribute for filtering
+                row.dataset.status = incident.status.toLowerCase().replace(' ', '-');
+
+                // Update status badge
+                const statusBadge = row.querySelector('.status-badge');
+                if (statusBadge) {
+                    statusBadge.className = `badge ${getStatusBadgeClass(incident.status)} status-badge`;
+                    statusBadge.textContent = incident.status;
+                }
+            }
+        }
+
+        function getSeverityBadgeClass(severity) {
+            return severity.toLowerCase() === 'critical' ? 'badge-critical' :
+                   severity.toLowerCase() === 'high' ? 'badge-high' :
+                   severity.toLowerCase() === 'medium' ? 'badge-medium' : 'badge-low';
+        }
+
+        function getStatusBadgeClass(status) {
+            return status.toLowerCase() === 'pending' ? 'badge-pending' :
+                   status.toLowerCase() === 'in progress' ? 'badge-in-progress' : 'badge-resolved';
+        }
+
+        function showAlert(message, type) {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show`;
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            let container = document.getElementById('adminAlerts');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'adminAlerts';
+                container.style.position = 'fixed';
+                container.style.top = '20px';
+                container.style.right = '20px';
+                container.style.zIndex = '3000';
+                container.style.maxWidth = '350px';
+                document.body.appendChild(container);
+            }
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 150);
+            }, 10000);
+        }
+
+    </script>
+}

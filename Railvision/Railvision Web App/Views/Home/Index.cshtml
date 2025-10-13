@@ -1,0 +1,67 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+
+<div class="text-center">
+    <h1 class="display-4">Welcome To NRZ TrainGenie</h1>
+    <p>Enhancing operational efficiency for NRZ</p>
+
+    <p>
+        Our innovative Geo-Intelligent System is designed specifically for
+        the National Railways of Zimbabwe (NRZ). Our mission is to revolutionize
+        the rail transport sector by integrating cutting-edge technologies such
+        as Geographic Information Systems (GIS) and Artificial Intelligence (AI)
+        to provide real-time visualization and obstacle detection for moving trains.
+    </p>
+
+    <h2>
+        <a class="btn btn-link" data-bs-toggle="collapse" href="#whyChoose" role="button" aria-expanded="false" aria-controls="whyChoose">
+            Why Choose Our System?
+        </a>
+    </h2>
+    <div class="collapse" id="whyChoose">
+        <p>
+            As Zimbabwe’s primary railway operator, NRZ plays a crucial role in facilitating
+            trade and connectivity. Our Geo-Intelligent System aims to improve operational
+            efficiency, enhance safety, and support sustainable development within the railway
+            sector.
+        </p>
+    </div>
+
+    <h2>
+        <a class="btn btn-link" data-bs-toggle="collapse" href="#joinUs" role="button" aria-expanded="false" aria-controls="joinUs">
+            Join Us on This Journey
+        </a>
+    </h2>
+    <div class="collapse" id="joinUs">
+        <p>
+            Explore the features of our system and see how we are transforming rail transport
+            in Zimbabwe. Together, we can ensure a safer, more efficient, and technologically
+            advanced railway network for everyone.
+        </p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('click', function (event) {
+        var whyChoose = document.getElementById('whyChoose');
+        var joinUs = document.getElementById('joinUs');
+        var whyChooseLink = document.querySelector('[href="#whyChoose"]');
+        var joinUsLink = document.querySelector('[href="#joinUs"]');
+
+        if (!whyChoose.contains(event.target) && !whyChooseLink.contains(event.target)) {
+            var whyChooseCollapse = new bootstrap.Collapse(whyChoose, {
+                toggle: false
+            });
+            whyChooseCollapse.hide();
+        }
+
+        if (!joinUs.contains(event.target) && !joinUsLink.contains(event.target)) {
+            var joinUsCollapse = new bootstrap.Collapse(joinUs, {
+                toggle: false
+            });
+            joinUsCollapse.hide();
+        }
+    });
+</script>

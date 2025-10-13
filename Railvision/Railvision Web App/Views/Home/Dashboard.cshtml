@@ -1,0 +1,1807 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "_Layout";
+}
+
+<div class="container-fluid px-0 position-relative">
+    <div class="visualization-container">
+        <div id="trainGraphContainer" style="display: none;">
+            <h5>Train Graph</h5>
+            <canvas id="trainGraph"></canvas>
+            <button class="btn btn-sm btn-light close-visualization"
+                    onclick="closeChart('trainGraph')">
+                &times;
+            </button>
+        </div>
+        <div id="dwellTimeChartContainer" class="chart-container" style="display: none;">
+            <h5>Station Dwell Time Chart</h5>
+            <canvas id="dwellTimeChart"></canvas>
+            <button onclick="simulateDwellTest()" class="btn btn-warning btn-sm">Simulate Dwell Chart</button>
+            <button class="btn btn-sm btn-light close-visualization"
+                    onclick="closeChart('dwellTime')">
+                &times;
+            </button>
+        </div>
+    </div>
+    <button id="dashboard-fullscreen-toggle" class="btn btn-light btn-sm position-absolute" style="top: 70px; left: 10px; z-index: 1000;">
+        <i class="bi bi-fullscreen"></i> Dashboard Fullscreen
+    </button>
+
+    <div class="row gx-0">
+        <div class="col-md-7">
+            <div id="map" style="height: 470px;"></div>
+            <div class="speed-box">
+                <div>Train ID: <span id="currentTrainId">-</span></div>
+                <div>Speed: <span id="currentSpeed">-</span> km/h</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <h3>Train Tracking</h3>
+        <p>Status: <span id="status" class="status-indicator">◌ Connecting...</span></p>
+        <p>Last Update: <span id="lastUpdated">-</span></p>
+        <p>Coordinates: <span id="coordinates">-</span></p>
+        <div class="legend">
+            <div><i class="legend-marker train"></i> Railway Station</div>
+            <div><i class="legend-marker crossing"></i> Crossing</div>
+            <div><i class="legend-marker live"></i> Live Train</div>
+        </div>
+    </div>
+    <div class="yolo-panel" style="position: absolute ; right: 250px; margin-top: -265px; background: rgba(0,0,0,0.5); border-radius: 5px; padding: 5px; width: 260px; height: 270px;">
+        <h5 style="color: #fff;">Train's Eye View Feed</h5>
+        <img id="Stream" width="250" height="200" style="border-radius: 8px; background: #222; border: 2px solid #00ff88;" alt="Stream" />
+        <div id="yoloStatus" style="font-size: 0.9em; margin-top: 4px;">Connecting...</div>
+    </div>
+    <div id="rightSidebar" class="sidebar-collapsed">
+        <div class="sidebar-toggle">
+            <button id="sidebarToggle"
+                    class="btn btn-sm btn-light"
+                    aria-label="Toggle sidebar menu"
+                    aria-expanded="false">
+                ☰
+            </button>
+        </div>
+        <div class="sidebar-content">
+            <ul class="sidebar-menu">
+                <li class="menu-item dropdown">
+                    <a href="#" class="menu-link dropdown-toggle">
+                        Real-Train Tracking
+                    </a>
+                    <div class="dropdown-content">
+                        <input type="text" class="form-control search-input"
+                               placeholder="Search Train IDs..." id="trainSearch">
+                    </div>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link">Obstacle Detection</a>
+                </li>
+                <li class="menu-item">
+                    <a asp-controller="Incident" asp-action="Centre" class="menu-link">
+                        <i class="fas fa-exclamation-circle me-2"></i> Incident Centre
+                    </a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link" onclick="showWagonDetachmentLogsModal()">
+                        Wagon Detachments
+                        <span id="unresolvedCount" class="badge bg-danger" style="display:none;">0</span>
+                    </a>
+                </li>
+                <li class="menu-item dropdown">
+                    <a href="#" class="menu-link dropdown-toggle">
+                        Data Visualization <i class="bi bi-chevron-down"></i>
+                    </a>
+                    <div class="dropdown-content">
+                        <button class="btn btn-menu" data-visualization="graph">Train Graph</button>
+                        <button class="btn btn-menu" data-visualization="chart">Time  Chart</button>
+                    </div>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link" id="summaryToggle">Summary Statistics</a>
+                </li>
+                <li class="menu-item">
+                    <a href="#" class="menu-link" data-bs-toggle="modal" data-bs-target="#settingsModal">Settings</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="summary-popup" id="summaryPopup">
+        <div class="popup-header">
+            <h5>Summary Statistics</h5>
+            <button class="close-summary" id="closeSummaryBtn">&times;</button>
+        </div>
+        <div class="popup-content">
+            <p>Trains Tracked: <span id="trackedCount">0</span></p>
+            <p>Trains Moving: <span id="movingCount">0</span></p>
+            <p>Trains Stopped: <span id="stoppedCount">0</span></p>
+            <button class="btn btn-sm btn-light mt-2" onclick="exportData()">Export Data</button>
+            <small id="exportTime"></small>
+        </div>
+    </div>
+
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Settings</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <button class="btn btn-menu">Theme</button>
+                    <button class="btn btn-menu" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @Html.AntiForgeryToken()
+
+    <div id="incidentNotification" class="position-fixed" style="top: 20px; right: 20px; z-index: 3000; max-width: 350px;"></div>
+
+    <div class="modal fade" id="wagonDetachmentLogsModal" tabindex="-1" aria-labelledby="wagonDetachmentLogsLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="background:rgba(30,30,40,0.95);color:#fff;border-radius:12px;">
+                <div class="modal-header" style="border-bottom:1px solid #444;">
+                    <h5 class="modal-title" id="wagonDetachmentLogsLabel">
+                        <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+                        Wagon Detachment Alert Logs
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0" id="wagonDetachmentLogsTable">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Time</th>
+                                    <th>Wagon ID</th>
+                                    <th>Train ID</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Logs will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #444;">
+                    <button class="btn btn-outline-danger" id="clearWagonDetachmentLogs">
+                        <i class="bi bi-trash"></i> Clear All Logs
+                    </button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .main-content {
+            padding: 0;
+            height: calc(100% - 56px - 60px);
+        }
+
+        #map {
+            background-color: #1a1a1a;
+            height: 100%;
+            width: calc(100% - 40px) !important;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            left: 2px;
+        }
+
+            #map:fullscreen {
+                background-color: #1a1a1a;
+            }
+
+        .container-fluid {
+            height: 100%;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+        }
+
+        .leaflet-control-fullscreen {
+            margin-top: 5px !important;
+            background: white;
+            border-radius: 4px;
+        }
+
+            .leaflet-control-fullscreen a {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 26px;
+                height: 26px;
+                color: #333;
+            }
+
+        body.dashboard-fullscreen header,
+        body.dashboard-fullscreen footer {
+            display: none;
+        }
+
+        body.dashboard-fullscreen .main-content {
+            height: 100vh;
+            top: 10px;
+        }
+
+        .place-label {
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black, -1px -1px 2px black;
+            pointer-events: none;
+            white-space: nowrap;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .leaflet-tooltip.place-label {
+            margin-top: 0;
+            margin-left: 0;
+            padding: 2px 5px;
+        }
+
+        .station-icon {
+            background: none;
+            border: none;
+        }
+
+        #rightSidebar {
+            position: fixed;
+            right: 0;
+            top: 80px;
+            bottom: 40px;
+            width: 250px;
+            background: #9C9C9C;
+            border-left: 1px solid #dee2e6;
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            transform: translateX(100%);
+        }
+
+            #rightSidebar.sidebar-expanded {
+                transform: translateX(0);
+            }
+
+        .sidebar-toggle {
+            position: relative;
+            left: -40px;
+            top: 10px;
+        }
+
+        .sidebar-content {
+            padding: 15px;
+            height: 100%;
+            overflow-y: auto;
+            padding-bottom: 20px;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .menu-item {
+            margin-bottom: 8px;
+        }
+
+            .menu-item.dropdown .menu-link {
+                position: relative;
+                padding-right: 30px;
+            }
+
+                .menu-item.dropdown .menu-link::after {
+                    position: relative;
+                    right: 0px;
+                    top: 30%;
+                    transform: translateY(-50%);
+                }
+
+            .menu-item.dropdown.active .menu-link::after {
+                content: "▴";
+            }
+
+        .menu-link {
+            display: block;
+            padding: 8px;
+            color: #212529;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+            .menu-link:hover {
+                background-color: #e9ecef;
+            }
+
+        .btn {
+            position: relative;
+            overflow: hidden;
+            transform: translate3d(0, 0, 0);
+        }
+
+            .btn:after {
+                content: "";
+                display: block;
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                top: 0;
+                left: 0;
+                pointer-events: none;
+                background-image: radial-gradient(circle, #fff 10%, transparent 10%);
+                background-repeat: no-repeat;
+                background-position: 50%;
+                transform: scale(10,10);
+                opacity: 0;
+                transition: transform .5s, opacity 1s;
+            }
+
+            .btn:active:after {
+                transform: scale(0,0);
+                opacity: .2;
+                transition: 0s;
+            }
+
+        .dropdown-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 0 0 4px 4px;
+            margin-top: 2px;
+        }
+
+            .dropdown-content.show {
+                max-height: 500px;
+                padding: 8px;
+            }
+
+        .dropdown.active .dropdown-content {
+            max-height: 200px;
+        }
+
+        .search-input {
+            margin-top: 8px;
+            width: 100%;
+        }
+
+        .btn-menu {
+            width: 100%;
+            text-align: left;
+            margin: 2px 0;
+            transition: all 0.2s;
+            padding: 8px 12px;
+        }
+
+            .btn-menu:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+                transform: translateX(3px);
+            }
+
+        @@media (max-width: 1200px) {
+            .sidebar-expanded + .info-panel {
+                right: calc(200px + 0.5rem);
+            }
+
+            #map {
+                margin-left: 10px;
+                width: calc(100% - 20px);
+                height: 400px !important;
+                min-height: 300px;
+                border-radius: 0;
+            }
+
+            #dashboard-fullscreen-toggle {
+                top: 10px;
+                font-size: 0.8rem;
+                padding: 3px 6px;
+            }
+
+            .leaflet-control-fullscreen {
+                margin-top: 50px !important;
+            }
+
+            #rightSidebar {
+                width: 85vw;
+                top: 70px;
+                touch-action: none;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .sidebar-toggle {
+                left: -35px;
+            }
+
+            .btn-menu {
+                padding: 12px;
+                min-height: 48px;
+            }
+
+            .btn {
+                padding: 12px 20px;
+                min-width: 48px;
+            }
+
+            #trainGraph {
+                width: 95% !important;
+                height: 200px !important;
+            }
+
+            #trainGraphContainer {
+                width: 100%;
+                padding: 10px;
+            }
+
+            #dwellTimeChart {
+                width: 95% !important;
+                height: 200px !important;
+            }
+
+            #dwellTimeChartContainer {
+                margin-top: -10px;
+            }
+        }
+
+        .info-panel {
+            position: absolute;
+            height: 205px;
+            top: -4px;
+            right: 250px;
+            transition: right 0.3s ease-in-out;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            min-width: 260px;
+            backdrop-filter: blur(5px);
+        }
+
+            .info-panel h3 {
+                font-size: 1.1rem; /* Smaller heading */
+                margin-bottom: 8px;
+            }
+
+            .info-panel p {
+                font-size: 0.95rem;
+                margin-bottom: 6px;
+            }
+
+            .info-panel .legend {
+                margin-top: 8px;
+                padding-top: 6px;
+                font-size: 0.9rem;
+            }
+
+            .info-panel .legend-marker {
+                width: 12px;
+                height: 12px;
+                margin-right: 5px;
+            }
+
+        .sidebar-expanded + .info-panel {
+            right: calc(250px + 1rem);
+        }
+
+        .status-indicator {
+            font-weight: bold;
+        }
+
+            .status-indicator.connected {
+                color: #00ff88;
+            }
+
+        .visualization-container {
+            position: fixed;
+            right: 3px;
+            top: 80px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+            width: 310px;
+            height: 480px;
+            overflow-y: auto;
+        }
+
+        .chart-container {
+            margin: 5px 0;
+            position: relative;
+            height: 280px;
+        }
+
+            .chart-container canvas {
+                max-height: 250px;
+                width: 100% !important;
+            }
+
+        #trainGraphContainer {
+            position: relative;
+            height: 300px;
+            margin: 15px 0;
+        }
+
+        #trainGraph {
+            top: -3px;
+            width: 100% !important;
+            height: 80% !important;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        #dwellTimeChartContainer {
+            position: relative;
+            margin-top: 15px 0;
+        }
+
+        #dwellTimeChart {
+            top: -3px;
+            width: 100% !important;
+            height: 80% !important;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .legend {
+            margin-top: 15px;
+            border-top: 1px solid #333;
+            padding-top: 10px;
+        }
+
+        .legend-marker {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            border-radius: 50%;
+        }
+
+            .legend-marker.train {
+                background-color: dodgerblue;
+            }
+
+            .legend-marker.crossing {
+                background-color: #7A4BA3;
+            }
+
+            .legend-marker.live {
+                background-color: #00ff88;
+            }
+
+        .pulsating-ping {
+            position: relative !important;
+            width: 40px !important;
+            height: 40px !important;
+            z-index: 10000 !important;
+        }
+
+        .ping-circle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            background-color: #00ff88;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.9);
+            animation: ping 1.5s infinite !important;
+        }
+
+        .ping-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px;
+            height: 8px;
+            background-color: #00ff88;
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        .leaflet-marker-icon .station-icon {
+            transition: transform 0.2s ease;
+        }
+
+        .leaflet-marker-icon:hover .station-icon {
+            transform: scale(1.2);
+            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.8));
+        }
+
+        .leaflet-marker-icon[src*="svg"] {
+            background-color: white;
+            border-radius: 50%;
+            padding: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .leaflet-control-layers {
+            background: rgba(0, 0, 0, 0.3) !important;
+            color: white !important;
+        }
+
+        .summary-popup {
+            position: fixed;
+            right: 5px;
+            top: 14%;
+            transform: none;
+            background: rgba(0, 0, 0, 0.4);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 220px;
+            backdrop-filter: blur(5px);
+            display: none;
+            z-index: 1100;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+            .summary-popup.visible {
+                display: block;
+                animation: popIn 0.3s ease forwards;
+            }
+
+            .summary-popup .popup-header {
+                position: relative;
+                padding-right: 25px;
+                margin-bottom: 10px;
+            }
+
+            .summary-popup .close-summary {
+                position: absolute;
+                top: 0;
+                right: 0;
+                background: transparent;
+                border: none;
+                color: white;
+                font-size: 1.5rem;
+                cursor: pointer;
+                padding: 0 5px;
+                line-height: 1;
+                z-index: 1101;
+            }
+
+                .summary-popup .close-summary:hover {
+                    color: #00ff88;
+                }
+
+        .speed-box {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+        }
+
+        .chart-container {
+            height: 100%;
+            width: 100%;
+            position: relative;
+        }
+
+        .close-visualization {
+            position: absolute;
+            top: 20px;
+            right: 5px;
+            z-index: 1001;
+        }
+
+        .search-input.valid {
+            border-left: 3px solid #00ff88;
+        }
+
+        .search-input.invalid {
+            border-left: 3px solid #ff0033;
+        }
+
+        #settingsModal .modal-content {
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        #settingsModal .modal-header {
+            background: rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        #settingsModal .modal-body {
+            background: transparent;
+        }
+
+        #settingsModal .btn-menu {
+            color: white;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+            #settingsModal .btn-menu:hover {
+                color: white;
+                background: rgba(255, 255, 255, 0.3);
+                transform: translateY(-2px);
+            }
+
+        .notifications-popup {
+            position: fixed;
+            top: 100px;
+            right: 300px;
+            width: 350px;
+            max-height: 60vh;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            color: white;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+            .notifications-popup.visible {
+                display: block;
+                animation: popIn 0.3s ease forwards;
+            }
+
+        #notificationsContent {
+            padding: 15px;
+            overflow-y: auto;
+            max-height: 55vh;
+            position: center;
+        }
+
+        .notification-item {
+            padding: 10px;
+            margin: 8px 0;
+            background: rgba(255,255,255,0.1);
+            border-left: 3px solid #ff4757;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+            .notification-item:hover {
+                background: rgba(255,255,255,0.15);
+                transform: translateX(5px);
+            }
+
+        #temporaryAlerts {
+            max-width: 350px;
+        }
+
+            #temporaryAlerts .alert {
+                animation: slideIn 0.3s ease, fadeOut 0.5s ease 9.5s;
+                margin-bottom: 10px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+
+        .alert-incident {
+            border-left: 4px solid #ff6a00;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            backdrop-filter: blur(10px);
+            background: rgba(30, 30, 40, 0.85);
+            color: white;
+        }
+
+            .alert-incident .btn {
+                padding: 3px 8px;
+                font-size: 0.85rem;
+            }
+
+        #wagonDetachmentLogsTable th, #wagonDetachmentLogsTable td {
+            vertical-align: middle;
+            font-size: 1rem;
+        }
+
+        #wagonDetachmentLogsTable .badge {
+            font-size: 1em;
+            padding: 0.5em 0.8em;
+        }
+
+        #wagonDetachmentLogsModal .modal-content {
+            box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+            border: none;
+        }
+
+        input, select, textarea {
+            font-size: 16px;
+        }
+
+        @@keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @@keyframes ping {
+            0% {
+                transform: translate(-50%, -50%) scale(0.9);
+                opacity: 1;
+            }
+
+            80% {
+                transform: translate(-50%, -50%) scale(3);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(3);
+                opacity: 0;
+            }
+        }
+
+        @@keyframes slideIn {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(0);
+            }
+        }
+
+        @@keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            let map;
+            let layers = {};
+            window.trackedTrains = {};
+            let trackedTrains = window.trackedTrains;
+            const MAX_RETRIES = 5;
+            let retryCount = 0;
+            let updateInterval = 5000;
+            let liveDataTimeout;
+            let trainGraph, dwellTimeChart;
+            let stationData = {};
+            let distanceMarkers = [];
+
+            function updateWagonStatusPopup(status) {
+                if (window.trackedTrains && trackedTrains['DE10A']) {
+                    const marker = trackedTrains['DE10A'].marker;
+                    marker.setPopupContent(`
+                        <div style="text-align: center; padding: 8px;">
+                            <strong>Train ID:</strong> DE10A<br>
+                            <strong>Wagons:</strong> <span style="color: ${status === 'Connected' ? 'green' : 'red'};">${status}</span>
+                        </div>
+                    `);
+                    marker.openPopup();
+                }
+            }
+
+            function showWagonDetachmentAlert(wagonId) {
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-danger alert-dismissible fade show';
+                alert.innerHTML = `
+                    <strong>Wagon Detachment!</strong> Wagon ${wagonId} has detached.<br>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.getElementById('incidentNotification').appendChild(alert);
+                setTimeout(() => alert.remove(), 20000);
+            }
+
+            // --- Main application code ---
+            function initMap() {
+                map = L.map('map', {
+                    preferCanvas: true,
+                    attributionControl: false,
+                    zoomControl: false
+                }).setView([-17.8292, 31.0522], 13);
+
+                L.control.zoom({ position: 'topright' }).addTo(map);
+
+                layers = {
+                    studyArea: L.layerGroup(),
+                    landuse: L.layerGroup(),
+                    railways: L.layerGroup(),
+                    roads: L.layerGroup(),
+                    crossings: L.layerGroup(),
+                    places: L.layerGroup(),
+                    railwayStations: L.layerGroup(),
+                    liveData: L.layerGroup().addTo(map)
+                };
+
+                L.control.layers(null, {
+                    'Study Area': layers.studyArea,
+                    'Land Use': layers.landuse,
+                    'Railways': layers.railways,
+                    'Roads': layers.roads,
+                    'Crossings': layers.crossings,
+                    'Places': layers.places,
+                    'Stations': layers.railwayStations,
+                    'Live Tracking': layers.liveData
+                }, {
+                    collapsed: false,
+                    position: 'bottomright'
+                }).addTo(map);
+            }
+
+            function initializeCharts() {
+                const trainCtx = document.getElementById('trainGraph').getContext('2d');
+                trainGraph = new Chart(trainCtx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: 'Distance Covered (km)',
+                            data: [],
+                            borderColor: '#00ff88',
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        elements: {
+                            line: {
+                                tension: 0
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    unit: 'second',
+                                    tooltipFormat: 'HH:mm:ss'
+                                },
+                                title: { display: true, text: 'Time' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Distance (km)' },
+                                min: 0,
+                                ticks: {
+                                    callback: (value) => `${value} km`,
+                                    autoSkip: true,
+                                    maxTicksLimit: 5
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: 10
+                        }
+                    }
+                });
+
+                const dwellCtx = document.getElementById('dwellTimeChart').getContext('2d');
+                dwellTimeChart = new Chart(dwellCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Dwell Time (minutes)',
+                            data: [],
+                            backgroundColor: '#7A4BA3'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            }
+
+
+            const layerStyles = {
+                railwayStations: {
+                    icon: L.icon({
+                        iconUrl: '/images/TrainstationICON.webp',
+                        iconSize: [35, 35],
+                        iconAnchor: [12, 25]
+                    })
+                },
+                railways: {
+                    color: '#732600',
+                    weight: 5,
+                    opacity: 1
+                },
+                roads: {
+                    color: '#FFFFFF',
+                    weight: 0.3,
+                    opacity: 1
+                },
+                crossings: {
+                    color: '#7A4BA3',
+                    fillColor: '#7A4BA3',
+                    radius: 4,
+                    weight: 5,
+                    opacity: 1,
+                    fillOpacity: 1
+                },
+                landuse: {
+                    color: '#9C9C9C',
+                    fillColor: '#9C9C9C',
+                    fillOpacity: 0.7
+                },
+                places: {
+                    radius: 4,
+                    fillColor: '#E1E1E1',
+                    color: '#686868',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 1
+                },
+                studyArea: {
+                    color: '#828282',
+                    weight: 0.5,
+                    dashArray: '10,5'
+                }
+            };
+
+            async function loadLayer(url, layerGroup, layerName) {
+                try {
+                    console.log(`Loading ${layerName} layer...`);
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                    const data = await response.json();
+
+                    const style = layerStyles[layerName] || layerStyles.default;
+
+                    const layerOptions = {
+                        pointToLayer: (feature, latlng) => {
+                            if (layerName === 'railwayStations') {
+                                const marker = L.marker(latlng, layerStyles.railwayStations);
+
+                                const stationName = feature.properties?.name || 'Unknown Station';
+                                marker.bindTooltip(stationName, {
+                                    permanent: false,
+                                    direction: 'auto',
+                                    className: 'station-tooltip'
+                                });
+
+                                return marker;
+                            }
+                            return L.circleMarker(latlng, style);
+                        },
+                        style: (feature) => {
+                            return style;
+                        },
+                        onEachFeature: (feature, layer) => {
+
+                            if (layerName === 'places' && feature.properties && feature.properties.name) {
+                                layer.bindTooltip(feature.properties.name, {
+                                    permanent: true,
+                                    direction: 'center',
+                                    className: 'place-label'
+                                });
+                            }
+
+                            if (layerName === 'railwayStations' || layerName === 'crossings') {
+                                layer.on({
+                                    mouseover: (e) => {
+                                        const layer = e.target;
+                                        layer.setStyle({
+                                            weight: style.weight ? style.weight + 2 : 2,
+                                            color: '#FFF',
+                                            fillOpacity: 1
+                                        });
+                                        layer.bringToFront();
+                                    },
+                                    mouseout: (e) => {
+                                        layerGroup.resetStyle(e.target);
+                                    },
+                                    click: (e) => {
+                                        map.fitBounds(e.target.getBounds());
+                                    }
+                                });
+                            }
+                        }
+                    };
+
+                    L.geoJSON(data, layerOptions).addTo(layerGroup);
+                    console.log(`${layerName} layer loaded successfully`);
+                } catch (error) {
+                    console.error(`Failed to load ${layerName}:`, error);
+                }
+            }
+
+            async function loadAllLayers() {
+                await Promise.allSettled([
+                    loadLayer('/data/study_area.geojson', layers.studyArea, 'studyArea'),
+                    loadLayer('/data/harare_landuse.geojson', layers.landuse, 'landuse'),
+                    loadLayer('/data/harare_railways.geojson', layers.railways, 'railways'),
+                    loadLayer('/data/harare_roads.geojson', layers.roads, 'roads'),
+                    loadLayer('/data/railroad_crossings.geojson', layers.crossings, 'crossings'),
+                    loadLayer('/data/harare_places.geojson', layers.places, 'places'),
+                    loadLayer('/data/harare_railway_station.geojson', layers.railwayStations, 'railwayStations')
+                ]);
+
+                Object.entries(layers).forEach(([name, layer]) => {
+                    if (layer.getLayers().length > 0) {
+                        layer.addTo(map);
+                        console.log(`${name} layer added to map`);
+                    }
+                });
+            }
+
+            function initSidebar() {
+                console.log("Initializing sidebar...");
+
+                document.getElementById('sidebarToggle').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const sidebar = document.getElementById('rightSidebar');
+                    const isExpanded = sidebar.classList.toggle('sidebar-expanded');
+                    this.setAttribute('aria-expanded', isExpanded);
+                });
+
+                document.addEventListener('click', function(event) {
+                    const sidebar = document.getElementById('rightSidebar');
+                    const sidebarToggle = document.getElementById('sidebarToggle');
+
+                    if (!sidebar.contains(event.target) &&
+                        !sidebarToggle.contains(event.target) &&
+                        sidebar.classList.contains('sidebar-expanded')) {
+
+                        sidebar.classList.remove('sidebar-expanded');
+                        sidebarToggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+
+                document.getElementById('rightSidebar').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+                document.querySelectorAll('.menu-item.dropdown .menu-link').forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const dropdown = this.nextElementSibling;
+                        dropdown.style.maxHeight = dropdown.style.maxHeight ? null : dropdown.scrollHeight + 'px';
+                    });
+                });
+
+                document.getElementById('summaryToggle').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    toggleSummaryPopup();
+                });
+
+                document.getElementById('trainSearch').addEventListener('input', function() {
+                    validateTrainId(this.value);
+                });
+
+                document.querySelector('[data-visualization="graph"]').addEventListener('click', () => {
+                    document.getElementById('trainGraphContainer').style.display = 'block'; // Only show this one
+                    if (!trainGraph) initializeCharts(); // Keep chart initialization
+                });
+
+                document.querySelector('[data-visualization="chart"]').addEventListener('click', () => {
+                    document.getElementById('dwellTimeChartContainer').style.display = 'block'; // Only show this one
+                    if (!dwellTimeChart) initializeCharts(); // Keep chart initialization
+                });
+            }
+
+            function createPulsatingMarker(latlng) {
+                const container = document.createElement('div');
+                container.className = 'pulsating-ping';
+                container.innerHTML = `
+                    <div class="ping-circle"></div>
+                    <div class="ping-center"></div>
+                    <div style="position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+                               color: white; font-weight: bold; text-shadow: 0 0 5px black;">
+                         DE10A
+                    </div>
+                `;
+                const marker = L.marker(latlng, {
+                    icon: L.divIcon({
+                        className: 'pulsating-marker',
+                        html: container,
+                        iconSize: [40, 40],
+                        iconAnchor: [20, 20]
+                    }),
+                    zIndexOffset: 1000
+                });
+
+                marker.bindPopup(`
+                    <div style="text-align: center; padding: 8px;">
+                        <strong>Train ID:</strong> DE10A<br>
+                        <strong>Wagons:</strong> <span style="color: green;">Connected</span>
+                    </div>
+                `, {
+                    permanent: true,
+                    autoClose: false,
+                    closeOnClick: false,
+                    direction: 'top',
+                    offset: [0, -20],
+                    className: 'train-popup'
+                }).openPopup();
+
+                return marker;
+            }
+
+            function haversineDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371e3;
+                const φ1 = lat1 * Math.PI/180;
+                const φ2 = lat2 * Math.PI/180;
+                const Δφ = (lat2-lat1) * Math.PI/180;
+                const Δλ = (lon2-lon1) * Math.PI/180;
+
+                const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                          Math.cos(φ1) * Math.cos(φ2) *
+                          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
+            function euclideanDistance(prevLat, prevLng, currLat, currLng) {
+                const latDiff = (currLat - prevLat) * 111.32;
+                const lngDiff = (currLng - prevLng) * (111.32 * Math.cos(currLat * Math.PI/180));
+                return Math.sqrt(Math.pow(latDiff, 2) + Math.pow(lngDiff, 2));
+            }
+
+            let lastLat = null;
+            let lastLng = null;
+            let hasLiveConnection = false;
+
+            async function updateLivePosition() {
+                try {
+                    const url = `https://api.thingspeak.com/channels/2855320/feeds.json?api_key=R3UJONMOKXA56ITC&results=1`;
+                    const response = await fetch(url);
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    if (!data.feeds || data.feeds.length === 0) {
+                        throw new Error("No feed data available");
+                    }
+
+                    const feed = data.feeds[0];
+                    const trainId = document.getElementById('trainSearch').value || 'DE10A';
+                    const lat = parseFloat(feed.field1);
+                    const lng = parseFloat(feed.field2);
+
+                    // Detect coordinate change
+                    let coordsChanged = false;
+                    if (lastLat !== null && lastLng !== null) {
+                        coordsChanged = (lat !== lastLat || lng !== lastLng);
+                    }
+                    lastLat = lat;
+                    lastLng = lng;
+
+                    // Only set hasLiveConnection if coordinates are valid and have changed at least once
+                    if (!isNaN(lat) && !isNaN(lng) && coordsChanged) {
+                        hasLiveConnection = true;
+                    }
+
+                    if (isNaN(lat) || isNaN(lng)) {
+                        throw new Error("Invalid coordinate values received");
+                    }
+
+                    const newLatLng = L.latLng(lat, lng);
+
+                    if (!trackedTrains[trainId]) {
+                        trackedTrains[trainId] = {
+                            marker: createPulsatingMarker([lat, lng]).addTo(layers.liveData),
+                            positions: [],
+                            timestamps: [],
+                            lastPosition: null,
+                            lastChangeTime: null,
+                            speed: 0,
+                            accumulatedDistance: 0,
+                            previousPosition: null,
+                            initialPosition: [lat, lng]
+                        };
+
+                    } else {
+                        trackedTrains[trainId].marker.setLatLng(newLatLng);
+                        map.panTo(newLatLng);
+
+                        if (trackedTrains[trainId].previousPosition) {
+                            const distance = euclideanDistance(
+                                trackedTrains[trainId].initialPosition[0],
+                                trackedTrains[trainId].initialPosition[1],
+                                lat,
+                                lng
+                            );
+                            trackedTrains[trainId].accumulatedDistance += distance;
+                        }
+                        trackedTrains[trainId].previousPosition = [lat, lng];
+
+                    }
+
+                    const currentPos = [lat, lng];
+                    const previousPos = trackedTrains[trainId].lastPosition;
+                    let speed = 0;
+
+                    if (previousPos) {
+                        const distance = haversineDistance(
+                            previousPos[0], previousPos[1],
+                            currentPos[0], currentPos[1]
+                        );
+                        const timeDiff = (Date.now() - trackedTrains[trainId].lastChangeTime) / 1000;
+                        speed = timeDiff > 0 ? (distance / timeDiff) * 3.6 : 0;
+                    }
+
+                    trackedTrains[trainId].speed = speed;
+                    trackedTrains[trainId].lastPosition = currentPos;
+                    trackedTrains[trainId].lastChangeTime = Date.now();
+                    trackedTrains[trainId].positions.push(currentPos);
+                    trackedTrains[trainId].timestamps.push(new Date());
+
+                    document.getElementById('currentSpeed').textContent = speed.toFixed(1);
+                    document.getElementById('currentTrainId').textContent = trainId;
+                    document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+                    document.getElementById('coordinates').textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+                    document.getElementById('status').className = 'status-indicator connected';
+                    document.getElementById('status').textContent = '✔ Live Tracking';
+                    retryCount = 0;
+
+                    updateSummaryStats();
+                    checkStationProximity(newLatLng);
+                    updateTrainGraph(trainId, newLatLng, Date.now());
+
+                } catch (error) {
+                    console.error('Tracking error:', error);
+                    document.getElementById('status').className = 'status-indicator';
+                    document.getElementById('status').textContent = `⚠ ${error.message}`;
+
+                    if (retryCount < MAX_RETRIES) {
+                        retryCount++;
+                        const retryDelay = Math.min(2000 * Math.pow(2, retryCount), 30000);
+                        console.log(`Retrying in ${retryDelay/1000} seconds... (Attempt ${retryCount}/${MAX_RETRIES})`);
+                        setTimeout(updateLivePosition, retryDelay);
+                    } else {
+                        console.error('Maximum retries reached. Stopping updates.');
+                        document.getElementById('status').textContent = '⚠ Connection Lost - Manual Refresh Required';
+                    }
+                }
+            }
+
+            // --- Integrate with live data polling ---
+            const originalUpdateLivePosition = updateLivePosition;
+
+           async function updateLivePositionWithSimulation() {
+                try {
+                    await originalUpdateLivePosition();
+                    lastDataTimestamp = Date.now();
+
+                } catch (error) {
+                    lastDataTimestamp = null;
+                }
+            }
+
+            let summaryPopup = document.getElementById('summaryPopup');
+            let closeSummaryBtn = document.getElementById('closeSummaryBtn');
+
+            function closeSummaryPopup() {
+                summaryPopup.classList.remove('visible');
+                summaryPopup.style.opacity = '0';
+                setTimeout(() => {
+                    summaryPopup.style.display = 'none';
+                }, 300);
+            }
+
+            function openSummaryPopup() {
+                summaryPopup.style.display = 'block';
+                void summaryPopup.offsetWidth;
+                summaryPopup.classList.add('visible');
+                summaryPopup.style.opacity = '1';
+            }
+
+            closeSummaryBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                closeSummaryPopup();
+            });
+
+            document.getElementById('summaryToggle').addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (summaryPopup.classList.contains('visible')) {
+                    closeSummaryPopup();
+                } else {
+                    openSummaryPopup();
+                }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && summaryPopup.classList.contains('visible')) {
+                    closeSummaryPopup();
+                }
+            });
+
+            function updateSummaryStats() {
+                let moving = 0, stopped = 0;
+                Object.values(trackedTrains).forEach(train => {
+                    const positions = train.positions;
+                    if (positions.length < 2) {
+                        stopped++;
+                    } else {
+                        const prev = positions[positions.length - 2];
+                        const curr = positions[positions.length - 1];
+                        if (prev[0] === curr[0] && prev[1] === curr[1]) {
+                            stopped++;
+                        } else {
+                            moving++;
+                        }
+                    }
+                });
+
+                document.getElementById('trackedCount').textContent = Object.keys(trackedTrains).length;
+                document.getElementById('movingCount').textContent = moving;
+                document.getElementById('stoppedCount').textContent = stopped;
+            }
+
+            function validateTrainId(trainId) {
+                const input = document.getElementById('trainSearch');
+                if (!trainId || !trainId.trim()) {
+                    input.classList.add('invalid');
+                    input.classList.remove('valid');
+                    return false;
+                }
+                input.classList.add('valid');
+                input.classList.remove('invalid');
+                return true;
+            }
+
+            function exportData() {
+                const formattedData = {
+                    metadata: {
+                        export_timestamp: new Date().toISOString(),
+                        system_version: "1.0",
+                        coordinate_system: "WGS84"
+                    },
+                    trains: Object.entries(trackedTrains).map(([trainId, trainData]) => ({
+                        train_id: trainId,
+                        last_update: trainData.timestamps.slice(-1)[0].toISOString(),
+                        current_status: (Date.now() - trainData.lastChangeTime > 40000) ? "stopped" : "moving",
+                        statistics: {
+                            current_speed: trainData.speed.toFixed(2) + " km/h",
+                            total_updates: trainData.positions.length,
+                            average_speed: calculateAverageSpeed(trainData),
+                            distance_covered: calculateTotalDistance(trainData).toFixed(2) + " km"
+                        },
+                        last_position: {
+                            latitude: trainData.lastPosition[0],
+                            longitude: trainData.lastPosition[1],
+                            timestamp: trainData.lastChangeTime
+                        }
+                    }))
+                };
+
+                const blob = new Blob([JSON.stringify(formattedData, null, 2)], { type: 'application/json' });
+                const now = new Date();
+                const filename = `train_export_${now.getFullYear()}-${(now.getMonth()+1).toString().padStart(2,'0')}-${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}-${now.getMinutes().toString().padStart(2,'0')}.json`;
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                const exportTime = document.getElementById('exportTime');
+                exportTime.textContent = `Exported ${formattedData.trains.length} trains at ${now.toLocaleString()}`;
+                exportTime.style.color = '#00ff88';
+                setTimeout(() => exportTime.style.color = '', 3000);
+            }
+
+            function calculateAverageSpeed(trainData) {
+                if (trainData.positions.length < 2) return "0 km/h";
+                const total = trainData.positions.reduce((sum, _, i) => {
+                    if (i === 0) return sum;
+                    const prev = trainData.positions[i-1];
+                    const curr = trainData.positions[i];
+                    const distance = haversineDistance(prev[0], prev[1], curr[0], curr[1]);
+                    const timeDiff = (trainData.timestamps[i] - trainData.timestamps[i-1]) / 3600000;
+                    return sum + (distance / 1000) / timeDiff;
+                }, 0);
+                return (total / (trainData.positions.length - 1)).toFixed(2) + " km/h";
+            }
+
+            function calculateTotalDistance(trainData) {
+                let total = 0;
+                for (let i = 1; i < trainData.positions.length; i++) {
+                    const prev = trainData.positions[i-1];
+                    const curr = trainData.positions[i];
+                    total += haversineDistance(prev[0], prev[1], curr[0], curr[1]);
+                }
+                return total / 1000;
+            }
+
+            function updateTrainGraph(trainId, position, timestamp) {
+                if (!trainGraph) return;
+                const train = trackedTrains[trainId];
+                if (!train) return;
+
+                const currentDistance = train.accumulatedDistance;
+
+                trainGraph.data.datasets[0].data.push({
+                    x: new Date(timestamp),
+                    y: currentDistance
+                });
+
+                if (trainGraph.data.datasets[0].data.length > 15) {
+                    trainGraph.data.datasets[0].data.shift();
+                }
+                trainGraph.update();
+            }
+
+            function updateDwellTimeChart(stationName, dwellTime) {
+                console.log('Updating dwell time:', stationName, dwellTime);
+                if (!dwellTimeChart) return;
+
+                const index = dwellTimeChart.data.labels.indexOf(stationName);
+                if (index > -1) {
+                    dwellTimeChart.data.datasets[0].data[index] = dwellTime;
+                } else {
+                    dwellTimeChart.data.labels.push(stationName);
+                    dwellTimeChart.data.datasets[0].data.push(dwellTime);
+                }
+
+                dwellTimeChart.update();
+            }
+
+            function checkStationProximity(position) {
+                layers.railwayStations.eachLayer(layer => {
+                    if (layer instanceof L.Marker) {
+                        const stationPos = layer.getLatLng();
+                        const distance = haversineDistance(
+                            position.lat, position.lng,
+                            stationPos.lat, stationPos.lng
+                        );
+
+                        if (distance < 100) {
+                            const stationName = layer.feature?.properties?.name || 'Unknown Station';
+                            if (!stationData[stationName]) {
+                                stationData[stationName] = {
+                                    entryTime: Date.now(),
+                                    dwellTime: 0
+                                };
+                            } else {
+                                const dwellTime = Math.floor((Date.now() - stationData[stationName].entryTime) / 1000 / 60);
+                                updateDwellTimeChart(stationName, dwellTime);
+                            }
+                        }
+                    }
+                });
+            }
+
+            function closeChart(type) {
+                if (type === 'trainGraph') {
+                    document.getElementById('trainGraphContainer').style.display = 'none';
+                    if (trainGraph) {
+                        trainGraph.destroy();
+                        trainGraph = null;
+                    }
+                } else if (type === 'dwellTime') {
+                    document.getElementById('dwellTimeChartContainer').style.display = 'none';
+                    if (dwellTimeChart) {
+                        dwellTimeChart.destroy();
+                        dwellTimeChart = null;
+                    }
+                }
+            }
+
+            function logout() {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                fetch('/Account/Logout', {
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': token }
+                }).then(() => window.location.href = '/Account/Login');
+            }
+
+            function showIncidentNotification(incident) {
+                const notification = document.createElement('div');
+                notification.className = 'alert alert-info alert-dismissible fade show';
+                notification.innerHTML = `
+                    <strong>New Incident Reported!</strong>
+                    <p>${incident.title}</p>
+                    <p><small>${incident.description.substring(0, 50)}...</small></p>
+                    <div class="mt-2">
+                        <a href="/Incident/Centre" class="btn btn-sm btn-primary">View Details</a>
+                        <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="alert">Dismiss</button>
+                    </div>
+                `;
+
+                document.getElementById('incidentNotification').appendChild(notification);
+
+                // Auto-dismiss after 15 seconds
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 150);
+                }, 15000);
+            }
+
+            // --- Wagon Detachment Logs ---
+            async function fetchWagonDetachmentLogs() {
+                const res = await fetch('/api/WagonDetachmentLog');
+                return await res.json();
+            }
+
+            async function logWagonDetachment(wagonId, details) {
+                await fetch('/api/WagonDetachmentLog', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wagonId, details })
+                });
+                updateWagonDetachmentLogsTable();
+            }
+
+            async function clearWagonDetachmentLogs() {
+                await fetch('/api/WagonDetachmentLog', { method: 'DELETE' });
+                updateWagonDetachmentLogsTable();
+
+                // Reset badge
+                const badge = document.getElementById('unresolvedCount');
+                badge.textContent = '0';
+                badge.style.display = 'none';
+            }
+
+            async function updateWagonDetachmentLogsTable() {
+                const logs = await fetchWagonDetachmentLogs();
+                const tbody = document.querySelector('#wagonDetachmentLogsTable tbody');
+                tbody.innerHTML = '';
+                if (!logs.length) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">No detachment alerts logged.</td></tr>`;
+                    return;
+                }
+                logs.forEach((log, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${logs.length - idx}</td>
+                        <td>${new Date(log.time).toLocaleString()}</td>
+                        <td><span class="badge bg-danger">${log.wagonId}</span></td>
+                        <td>${log.trainId || '-'}</td>
+                        <td>${log.details}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            window.showWagonDetachmentLogsModal = async function() {
+                await updateWagonDetachmentLogsTable();
+                const modal = new bootstrap.Modal(document.getElementById('wagonDetachmentLogsModal'));
+                modal.show();
+            };
+
+            // --- Dwell Time Simulation ---
+            window.simulateDwellTest = function() {
+                if (!window.dwellTimeChart) {
+                    if (typeof initializeCharts === "function") {
+                        initializeCharts();
+                    }
+                }
+                document.getElementById('dwellTimeChartContainer').style.display = 'block';
+                updateDwellTimeChart("Harare Station", Math.floor(Math.random() * 10) + 1);
+            };
+
+            // --- SignalR Connection ---
+            document.addEventListener('DOMContentLoaded', function() {
+                const connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/incidentHub")
+                    .build();
+
+                connection.start().then(() => {
+                    connection.invoke("JoinAdminGroup").catch(err => console.error(err));
+                }).catch(err => console.error(err));
+
+                connection.on("ReceiveNewIncident", incident => {
+                    showIncidentNotification(incident);
+                });
+            });
+
+            async function init() {
+                try {
+                    initMap();
+                    initSidebar();
+                    await loadAllLayers();
+
+                    document.getElementById('status').textContent = '◌ Connecting...';
+                    updateLivePositionWithSimulation();
+                    setInterval(updateLivePositionWithSimulation, 5000);
+
+                    document.getElementById('dashboard-fullscreen-toggle').addEventListener('click', function() {
+                        document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+                    });
+
+                    const mc = new Hammer(document.getElementById('map'));
+                    mc.get('swipe').set({ direction: Hammer.DIRECTION_HORIZONTAL });
+                    mc.on('swipeleft', () => window.innerWidth <= 767 && document.getElementById('rightSidebar').classList.add('sidebar-expanded'));
+                    mc.on('swiperight', () => window.innerWidth <= 767 && document.getElementById('rightSidebar').classList.remove('sidebar-expanded'));
+
+                    mc.on('tap', (e) => {
+                        const sidebar = document.getElementById('rightSidebar');
+                        const sidebarToggle = document.getElementById('sidebarToggle');
+                        const clickedElement = e.target;
+
+                        if (!sidebar.classList.contains('sidebar-expanded')) return;
+
+                        const isOutsideSidebar = !clickedElement.closest('#rightSidebar');
+                        const isOutsideToggle = !clickedElement.closest('#sidebarToggle');
+
+                        if (isOutsideSidebar && isOutsideToggle) {
+                            sidebar.classList.remove('sidebar-expanded');
+                            sidebarToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+
+                    // Setup wagon logs clear button
+                    document.getElementById('clearWagonDetachmentLogs').addEventListener('click', async function() {
+                        if (confirm('Clear all wagon detachment logs?')) {
+                            await clearWagonDetachmentLogs();
+                        }
+                    });
+
+                    console.log("Application initialized successfully");
+                } catch (error) {
+                    console.error("Initialization failed:", error);
+                }
+            }
+            window.closeChart = closeChart;
+            init();
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const yoloStream = document.getElementById('Stream');
+            const yoloStatus = document.getElementById('yoloStatus');
+            const streamUrl = 'https://localhost:5001/yolo_stream';
+
+            function setYoloStatus(text, color) {
+                yoloStatus.textContent = text;
+                yoloStatus.style.color = color;
+            }
+
+            setYoloStatus('Connecting...', '#ffe066');
+
+            yoloStream.src = streamUrl;
+            yoloStream.onerror = function() {
+                setYoloStatus('Stream error. Check backend.', '#ff4d4f');
+            };
+            yoloStream.onload = function() {
+                setYoloStatus('Live', '#007bff');
+            };
+        });
+    </script>
+}

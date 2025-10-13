@@ -1,0 +1,208 @@
+﻿@{
+    ViewData["Title"] = "Login";
+    Layout = "_Layout";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="login-card shadow-lg">
+                <div class="card-header bg-gradient-primary text-white">
+                    <h3 class="mb-0 text-center font-weight-bold">Welcome to TrainGenie</h3>
+                    <p class="text-center mb-0">Please select your login type</p>
+                </div>
+
+                <div class="card-body p-4">
+                    @if (ViewBag.Error != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>@ViewBag.Error
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    }
+
+                    <!-- Admin Login Form -->
+                    <div id="adminLogin" class="login-form">
+                        <form asp-action="Login" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="role" value="Admin">
+
+                            <div class="form-group mb-4">
+                                <label class="form-label text-secondary">Admin Username</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-user-shield text-primary"></i>
+                                    </span>
+                                    <input type="text" name="username" class="form-control form-control-lg"
+                                           placeholder="Enter admin username" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label class="form-label text-secondary">Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-lock text-primary"></i>
+                                    </span>
+                                    <input type="password" name="password" class="form-control form-control-lg"
+                                           placeholder="Enter password" required>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-lg w-100 mb-3">
+                                <i class="fas fa-sign-in-alt me-2"></i>Admin Login
+                            </button>
+
+                            <div class="text-center">
+                                <a href="#" class="switch-link" onclick="showOperatorLogin()">
+                                    Operator Login? <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                            <div class="text-center">
+                                <a href="/Account/Register">Don't have an account? Register here</a>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Operator Login Form -->
+                    <div id="operatorLogin" class="login-form d-none">
+                        <form asp-action="Login" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="role" value="Operator">
+
+                            <div class="form-group mb-4">
+                                <label class="form-label text-secondary">Operator ID</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-id-card text-success"></i>
+                                    </span>
+                                    <input type="text" name="username" class="form-control form-control-lg"
+                                           placeholder="Enter operator ID" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-4">
+                                <label class="form-label text-secondary">Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light">
+                                        <i class="fas fa-lock text-success"></i>
+                                    </span>
+                                    <input type="password" name="password" class="form-control form-control-lg"
+                                           placeholder="Enter password" required>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-success btn-lg w-100 mb-3">
+                                <i class="fas fa-train me-2"></i>Operator Login
+                            </button>
+
+                            <div class="text-center">
+                                <a href="#" class="switch-link" onclick="showAdminLogin()">
+                                    Admin Login? <i class="fas fa-arrow-left"></i>
+                                </a>
+                            </div>
+                            <div class="text-center mt-3">
+                                <a href="/Account/Register">Don't have an account? Register here</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+            --success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .login-card {
+            border-radius: 1rem;
+            overflow: hidden;
+            border: none;
+            transition: transform 0.3s ease;
+        }
+
+            .login-card:hover {
+                transform: translateY(-5px);
+            }
+
+        .card-header.bg-gradient-primary {
+            background: var(--primary-gradient);
+            padding: 2rem 1rem;
+        }
+
+        .form-control-lg {
+            border-radius: 0.5rem;
+            border: 2px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+            .form-control-lg:focus {
+                border-color: #3b82f6;
+                box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+            }
+
+        .input-group-text {
+            border-radius: 0.5rem 0 0 0.5rem !important;
+            border-right: none;
+        }
+
+        .switch-link {
+            color: #64748b !important;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+            .switch-link:hover {
+                color: #3b82f6 !important;
+                transform: translateX(3px);
+            }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-success {
+            background: var(--success-gradient);
+            border: none;
+            letter-spacing: 0.5px;
+        }
+
+        .login-form {
+            opacity: 1;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+            .login-form.d-none {
+                display: block !important;
+                opacity: 0;
+                transform: translateX(20px);
+                height: 0;
+                overflow: hidden;
+            }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        function showOperatorLogin() {
+            document.getElementById('adminLogin').classList.add('d-none');
+            document.getElementById('operatorLogin').classList.remove('d-none');
+            setTimeout(() => {
+                document.getElementById('operatorLogin').scrollIntoView({ behavior: 'smooth' });
+            }, 300);
+        }
+
+        function showAdminLogin() {
+            document.getElementById('operatorLogin').classList.add('d-none');
+            document.getElementById('adminLogin').classList.remove('d-none');
+        }
+    </script>
+}
